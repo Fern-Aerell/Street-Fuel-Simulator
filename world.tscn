@@ -1,0 +1,74 @@
+[gd_scene load_steps=12 format=3 uid="uid://8maeci5ylgc2"]
+
+[ext_resource type="PackedScene" uid="uid://b7nj2w540b5ss" path="res://plane.tscn" id="1_5e45g"]
+[ext_resource type="PackedScene" uid="uid://bitc54dkexgu6" path="res://player.tscn" id="2_pp88n"]
+[ext_resource type="Material" uid="uid://bu80kjoiw7yh6" path="res://red.tres" id="3_1fnp2"]
+[ext_resource type="PackedScene" uid="uid://ydign2rstrfu" path="res://test_item.tscn" id="3_1jixx"]
+[ext_resource type="Material" uid="uid://cywahh2rmmpql" path="res://yellow.tres" id="4_2urun"]
+[ext_resource type="Material" uid="uid://b0pfn18wl1183" path="res://green.tres" id="5_1kq1o"]
+[ext_resource type="Material" uid="uid://sbw7gorjkp5g" path="res://blue.tres" id="6_knikc"]
+
+[sub_resource type="PhysicalSkyMaterial" id="PhysicalSkyMaterial_7ghix"]
+ground_color = Color(1, 1, 1, 1)
+
+[sub_resource type="Sky" id="Sky_r161k"]
+sky_material = SubResource("PhysicalSkyMaterial_7ghix")
+
+[sub_resource type="Environment" id="Environment_5crcd"]
+background_mode = 2
+sky = SubResource("Sky_r161k")
+sdfgi_enabled = true
+glow_enabled = true
+
+[sub_resource type="BoxMesh" id="BoxMesh_cgd4c"]
+
+[node name="World" type="Node3D"]
+
+[node name="plane" parent="." instance=ExtResource("1_5e45g")]
+
+[node name="Player" parent="." instance=ExtResource("2_pp88n")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.03096, 0)
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_5crcd")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.763438, 0.259478, -0.591467, 0.329206, 0.631542, 0.701981, 0.555685, -0.730634, 0.396722, 0, 8.33039, 0)
+light_energy = 3.0
+shadow_enabled = true
+
+[node name="TestItem" parent="." instance=ExtResource("3_1jixx")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12649, 1.92623, -5.18438)
+
+[node name="TestItem2" parent="." instance=ExtResource("3_1jixx")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.9953, 3.33806, -5.18438)
+
+[node name="TestItem3" parent="." instance=ExtResource("3_1jixx")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.77131, 4.94311, -5.18438)
+
+[node name="Patokan" type="Node3D" parent="."]
+metadata/_edit_lock_ = true
+
+[node name="red" type="MeshInstance3D" parent="Patokan"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 25)
+material_override = ExtResource("3_1fnp2")
+mesh = SubResource("BoxMesh_cgd4c")
+skeleton = NodePath("../..")
+
+[node name="yellow" type="MeshInstance3D" parent="Patokan"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 2, 0)
+material_override = ExtResource("4_2urun")
+mesh = SubResource("BoxMesh_cgd4c")
+skeleton = NodePath("../..")
+
+[node name="green" type="MeshInstance3D" parent="Patokan"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, -25)
+material_override = ExtResource("5_1kq1o")
+mesh = SubResource("BoxMesh_cgd4c")
+skeleton = NodePath("../..")
+
+[node name="blue" type="MeshInstance3D" parent="Patokan"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 2, 0)
+material_override = ExtResource("6_knikc")
+mesh = SubResource("BoxMesh_cgd4c")
+skeleton = NodePath("../..")
