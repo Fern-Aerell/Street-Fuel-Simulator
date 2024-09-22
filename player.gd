@@ -1,193 +1,217 @@
 extends CharacterBody3D
 
-## PLAYER CAMERA VARIABLE
-# Variabel untuk menyimpan instance camera
-@onready var player_camera: Camera3D = $PlayerCamera
-# Kecepatan rotasi kamera (dalam derajat per pixel)
-var mouse_sensitivity: float = 0.1
-# Batas rotasi vertikal untuk kamera (Agar tidak memutar 360 derajat)
-const VERTICAL_LOOK_LIMIT_UP: float = 90.0
-const VERTICAL_LOOK_LIMIT_DOWN: float = -50.0 # Harus negatif
-# Variable untuk menyimpan rotasi vertical (up/down)
-var rotation_vertical: float = 0.0
-# menyimpan apakah mouse sedang dalam mode capture atau tidak
-var is_mouse_captured: bool
-
-## PLAYER BOBBING
+# Mengaktifkan atau menonaktifkan efek goyangan kamera saat berjalan
 @export var view_bobbing: bool = true
-# Variable untuk menyimpan seberapah tinggi dan rendah kamera bergerak
-const bobbing_amplitude: float = 0.005
-# Variable untuk menyimpan kecepatan bobbing saat berjalan
-const WALK_BOBBING_SPEED: float = 5.0
-# Variable untuk menyimpan kecepatan bobbing saat berlari
-const SPRINT_BOBBING_SPEED: float = 9.0
-# Variable untuk menyimpan kecepatan bobbing saat saat ini
-var current_bobbing_speed: float
-# Variable untuk menyimpan waktu bobbing
-var bobbing_time_passed: float = 0.0
+# Mengatur sensitivitas gerakan mouse
+@export var mouse_sensitivity: float = 0.1
 
-## PLAYER MOVEMENT VARIABLE
-# Variable untuk penyimpan kecepatan berjalan
-const WALK_MOVEMENT_SPEED: float = 3.0
-# Variable untuk penyimpan kecepatan berlari
-const SPRINT_MOVEMENT_SPEED: float = 5.0
-# Variable untuk penyimpan tinggi lompatan saat berjalan
-const WALK_JUMP_VELOCITY: float = 4.5
-# Variable untuk penyimpan tinggi lompatan saat berlari
-const SPRINT_JUMP_VELOCITY: float = 6.5
-# Variable untuk penyimpan kecepatan bergerak yang akan digunakan
-var current_movement_speed: float
-# Variable untuk penyimpan tinggi lompatan yang akan digunakan
-var current_jump_velocity: float
-
-## PLAYER GRAB OBJECT
-# Referensi ke RayCast3D di PlayerCamera
+# Referensi ke node kamera pemain
+@onready var player_camera: Camera3D = $PlayerCamera
+# Referensi ke node RayCast3D yang digunakan untuk deteksi objek
 @onready var player_camera_ray_cast: RayCast3D = $PlayerCamera/RayCast3D
-# Variabel untuk menyimpan objek yang sedang diambil
+
+# Batas sudut vertikal untuk melihat ke atas
+const VERTICAL_LOOK_LIMIT_UP: float = 90.0
+# Batas sudut vertikal untuk melihat ke bawah
+const VERTICAL_LOOK_LIMIT_DOWN: float = -50.0
+# Amplitudo goyangan kamera
+const BOBBING_AMPLITUDE: float = 0.005
+# Kecepatan goyangan kamera saat berjalan
+const WALK_BOBBING_SPEED: float = 5.0
+# Kecepatan goyangan kamera saat berlari
+const SPRINT_BOBBING_SPEED: float = 9.0
+# Kecepatan gerakan saat berjalan
+const WALK_MOVEMENT_SPEED: float = 3.0
+# Kecepatan gerakan saat berlari
+const SPRINT_MOVEMENT_SPEED: float = 5.0
+# Kecepatan lompatan saat berjalan
+const WALK_JUMP_VELOCITY: float = 4.5
+# Kecepatan lompatan saat berlari
+const SPRINT_JUMP_VELOCITY: float = 6.5
+# Jarak maksimum untuk mengambil objek
+const GRAB_DISTANCE: float = 2.0
+# Kecepatan menggerakkan objek yang diambil
+const GRAB_SPEED: float = 10.0
+# Sudut rotasi objek yang diambil
+const GRAB_ROTATION_ANGEL: float = 90.0
+
+# Rotasi vertikal kamera
+var rotation_vertical: float = 0.0
+# Status apakah mouse sedang ditangkap
+var is_mouse_captured: bool = true
+# Kecepatan goyangan kamera saat ini
+var current_bobbing_speed: float = WALK_BOBBING_SPEED
+# Waktu yang telah berlalu untuk efek goyangan
+var bobbing_time_passed: float = 0.0
+# Kecepatan gerakan saat ini
+var current_movement_speed: float = WALK_MOVEMENT_SPEED
+# Kecepatan lompatan saat ini
+var current_jump_velocity: float = WALK_JUMP_VELOCITY
+# Objek yang sedang dipegang
 var grabbed_object: RigidBody3D = null
-# Kecepatan menarik objek ke arah pemain
-var grab_distance: float = 2.0
-# Kecepatan pergerakan objek ke posisi target
-var grab_speed: float = 10.0
+# Variabel untuk menyimpan status rotasi
+var is_rotating = false
+var rotation_target = Vector3.ZERO
 
-# Called when the node enters the scene tree for the first time.
+# Fungsi yang dipanggil saat node siap
 func _ready() -> void:
-	# Mengatur kecepatan bergerak dan tinggi lompatan untuk berjalan
-	current_movement_speed = WALK_MOVEMENT_SPEED
-	current_jump_velocity = WALK_JUMP_VELOCITY
-	# Mengatur kecepatan bobbing untuk berjalan
-	current_bobbing_speed = WALK_BOBBING_SPEED
-	# Mengatur mode input mouse menjadi captured (Kursor tidak terlihat)
+	# Mengatur mode mouse menjadi tertangkap
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-	is_mouse_captured = true
 
-func _unhandled_input(event):
-	# Tangani input mouse jika event adalah MouseMotion dan mouse mode capture
+# Fungsi untuk menangani input yang tidak tertangani
+func _unhandled_input(event: InputEvent) -> void:
+	# Menangani gerakan mouse untuk rotasi kamera
 	if event is InputEventMouseMotion and is_mouse_captured:
 		_rotate_camera(event.relative)
+	# Menangani tombol escape untuk mengalihkan mode tangkapan mouse
+	elif event.is_action_pressed("escape") and is_mouse_captured:
+		_toggle_mouse_capture()
+	# Menangani klik kiri mouse untuk mengalihkan mode tangkapan mouse
+	elif event.is_action_pressed("mouse_left_button") and not is_mouse_captured:
+		_toggle_mouse_capture()
 
-	# Tangani input jika tombol ESC ditekan
-	if event is InputEventKey and event.is_action_pressed("escape"):
-		if is_mouse_captured:
-			_toggle_mouse_capture()
-
-	# Jika tombol kiri mouse ditekan, kembalikan mode capture
-	if event is InputEventMouseButton and event.is_action_pressed("mouse_left_button"):
-		if not is_mouse_captured:
-			_toggle_mouse_capture()
-
+# Fungsi untuk memutar kamera berdasarkan gerakan mouse
 func _rotate_camera(mouse_delta: Vector2) -> void:
-	# Rotasi horizontal (menggerakkan CharacterBody3D)
+	# Memutar kamera secara horizontal
 	rotation.y -= deg_to_rad(mouse_delta.x * mouse_sensitivity)
-
-	# Rotasi vertikal (menggerakkan kamera, tidak langsung pada CharacterBody3D)
-	rotation_vertical -= mouse_delta.y * mouse_sensitivity
-	rotation_vertical = clamp(rotation_vertical, VERTICAL_LOOK_LIMIT_DOWN, VERTICAL_LOOK_LIMIT_UP)
-
-	# Set rotasi kamera berdasarkan rotasi vertikal
+	# Memutar kamera secara vertikal dengan batasan sudut
+	rotation_vertical = clamp(rotation_vertical - mouse_delta.y * mouse_sensitivity, VERTICAL_LOOK_LIMIT_DOWN, VERTICAL_LOOK_LIMIT_UP)
 	player_camera.rotation_degrees.x = rotation_vertical
 
-# Fungsi untuk mengubah mode mouse capture
+# Fungsi untuk mengalihkan mode tangkapan mouse
 func _toggle_mouse_capture() -> void:
-	if is_mouse_captured:
-		# Jika mouse sedang di-capture, ubah menjadi visible
-		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-		is_mouse_captured = false
-	else:
-		# Jika mouse tidak di-capture, ubah kembali menjadi captured
-		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-		is_mouse_captured = true
+	# Mengubah status tangkapan mouse
+	is_mouse_captured = not is_mouse_captured
+	# Mengatur mode mouse sesuai dengan status tangkapan
+	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED if is_mouse_captured else Input.MOUSE_MODE_VISIBLE)
 
+# Fungsi yang dipanggil setiap frame fisika
 func _physics_process(delta: float) -> void:
-	# Add the gravity.
+	# Menerapkan gravitasi jika tidak di lantai
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 
-	# Jika pemain menekan tombol sprint maka kecepatan bergerak dan tinggi lompatan akan di sesuaikan
-	if Input.is_action_pressed("sprint"):
-		# Mengatur kecepatan bergerak dan tinggi lompatan untuk berlari
-		current_movement_speed = SPRINT_MOVEMENT_SPEED
-		current_jump_velocity = SPRINT_JUMP_VELOCITY
-		# Mengatur kecepatan bobbing untuk berlari
-		current_bobbing_speed = SPRINT_BOBBING_SPEED
-	else:
-		# Mengatur kecepatan bergerak dan tinggi lompatan untuk berjalan
-		current_movement_speed = WALK_MOVEMENT_SPEED
-		current_jump_velocity = WALK_JUMP_VELOCITY
-		# Mengatur kecepatan bobbing untuk berjalan
-		current_bobbing_speed = WALK_BOBBING_SPEED
+	# Mengatur kecepatan berdasarkan status berlari
+	var is_sprinting = Input.is_action_pressed("sprint")
+	current_movement_speed = SPRINT_MOVEMENT_SPEED if is_sprinting else WALK_MOVEMENT_SPEED
+	current_jump_velocity = SPRINT_JUMP_VELOCITY if is_sprinting else WALK_JUMP_VELOCITY
+	current_bobbing_speed = SPRINT_BOBBING_SPEED if is_sprinting else WALK_BOBBING_SPEED
 
-	# Handle jump.
+	# Menangani lompatan
 	if Input.is_action_just_pressed("jump") and is_on_floor():
 		velocity.y = current_jump_velocity
 
-	# Get the input direction and handle the movement/deceleration.
-	# As good practice, you should replace UI actions with custom gameplay actions.
+	# Menghitung arah gerakan berdasarkan input
 	var input_dir := Input.get_vector("left", "right", "forward", "backward")
 	var direction := (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
 	var player_camera_position_default = player_camera.global_transform.origin
+
+	# Menerapkan gerakan dan efek goyangan kamera
 	if direction:
 		velocity.x = direction.x * current_movement_speed
 		velocity.z = direction.z * current_movement_speed
-		## BOBBING
+		## VIEW BOBBING
 		if view_bobbing:
 			bobbing_time_passed += delta * current_bobbing_speed
-			# Hitung posisi bobbing
-			var bobbing_offset = Vector3(0, sin(bobbing_time_passed) * bobbing_amplitude, 0)
+			var bobbing_offset = Vector3(0, sin(bobbing_time_passed) * BOBBING_AMPLITUDE, 0)
 			player_camera.global_transform.origin = player_camera_position_default + bobbing_offset
 	else:
 		velocity.x = move_toward(velocity.x, 0, current_movement_speed)
 		velocity.z = move_toward(velocity.z, 0, current_movement_speed)
-		## BOBBING
+		## VIEW BOBBING
 		player_camera.global_transform.origin = player_camera_position_default
 
+	# Menerapkan gerakan pada karakter
 	move_and_slide()
 
-func _process(delta: float) -> void:
+
+# Fungsi yang dipanggil setiap frame
+func _process(_delta: float) -> void:
+	# Menangani pengambilan dan pelepasan objek
 	if Input.is_action_pressed("mouse_left_button"):
 		if grabbed_object == null:
 			_try_grab_object()
 		else:
-			_hold_object(delta)
-	else:
-		if grabbed_object != null:
-			_release_object()
+			_hold_object(_delta)
+	elif grabbed_object != null:
+		_release_object()
+	
+	if grabbed_object != null:
+		# Mengatur arah rotasi berdasarkan input
+		var rotation_direction = 0.0
 
-# Mencoba mengambil objek
-func _try_grab_object():
+		# Mengatur arah rotasi berdasarkan input
+		if Input.is_action_pressed("q"):
+			rotation_direction = -1.0 if Input.is_action_pressed("sprint") else 1.0
+			rotation_target.x += rotation_direction * 90.0 * _delta  # Incremental rotation
+			is_rotating = true
+		elif Input.is_action_pressed("e"):
+			rotation_direction = -1.0 if Input.is_action_pressed("sprint") else 1.0
+			rotation_target.y += rotation_direction * 90.0 * _delta  # Incremental rotation
+			is_rotating = true
+		elif Input.is_action_pressed("r"):
+			rotation_direction = -1.0 if Input.is_action_pressed("sprint") else 1.0
+			rotation_target.z += rotation_direction * 90.0 * _delta  # Incremental rotation
+			is_rotating = true
+		else:
+			is_rotating = false
+
+		# Melakukan rotasi jika is_rotating true
+		if is_rotating:
+			_rotate_grabbed_object(rotation_target, _delta)
+		
+		# Reset rotation_target jika tidak ada input
+		rotation_target = grabbed_object.rotation_degrees
+			
+
+# Fungsi untuk mencoba mengambil objek
+func _try_grab_object() -> void:
+	# Memeriksa apakah ray cast mengenai objek
 	if player_camera_ray_cast.is_colliding():
 		var object = player_camera_ray_cast.get_collider()
+		# Jika objek adalah RigidBody3D, ambil objek tersebut
 		if object is RigidBody3D:
 			grabbed_object = object
-			grabbed_object.freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
-			grabbed_object.freeze = true # Membekukan rotasi/gerakan saat diambil
+			grabbed_object.freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
+			grabbed_object.freeze = true
 
-# Memegang objek dan mengatur posisinya
-func _hold_object(delta: float):
-	if grabbed_object != null:
-		var target_position = player_camera.global_transform.origin + -player_camera.global_transform.basis.z.normalized() * grab_distance
-		# Hitung pergerakan yang diinginkan
-		var motion = target_position - grabbed_object.global_transform.origin
-		# Gunakan move_and_collide agar tidak menembus benda lain
-		var collision = grabbed_object.move_and_collide(motion * grab_speed * delta)
-		# Jika terjadi tabrakan
+# Fungsi untuk memegang objek yang diambil
+func _hold_object(delta: float) -> void:
+	if grabbed_object:
+		# Menghitung posisi target untuk objek yang dipegang
+		var target_position = player_camera.global_transform.origin - player_camera.global_transform.basis.z.normalized() * GRAB_DISTANCE
+		var motion = (target_position - grabbed_object.global_transform.origin) * GRAB_SPEED * delta
+		# Menggerakkan objek yang dipegang
+		var collision = grabbed_object.move_and_collide(motion)
+		# Menangani tabrakan dengan objek lain
 		if collision:
 			var collided_body = collision.get_collider()
 			if collided_body is RigidBody3D:
-				# Bandingkan massa sebelum menerapkan gaya dorong
-				if grabbed_object.mass >= collided_body.mass:
-					# Hitung arah dorong
-					var impulse_direction = (collided_body.global_transform.origin - grabbed_object.global_transform.origin).normalized()
-					# Sesuaikan kekuatan dorongan
-					var force_strength = float(grabbed_object.mass - collided_body.mass)
-					if force_strength < 0.0:
-						force_strength = 0.0
-					elif force_strength == 0.0:
-						force_strength = 0.5
-					collided_body.apply_central_impulse(impulse_direction * force_strength)
+				var force_strength = max(0.0, float(grabbed_object.mass - collided_body.mass))
+				if force_strength == 0.0:
+					force_strength = 0.5
+				var impulse_direction = (collided_body.global_transform.origin - grabbed_object.global_transform.origin).normalized()
+				collided_body.apply_central_impulse(impulse_direction * force_strength)
 
-# Melepaskan objek
-func _release_object():
+# Fungsi untuk melepaskan objek yang dipegang
+func _release_object() -> void:
+	# Mengaktifkan kembali fisika objek dan melepaskannya
+	grabbed_object.freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
+	grabbed_object.freeze = false
+	grabbed_object = null
+
+# Fungsi untuk memutar objek yang dipegang pada sumbu tertentu dengan smooth
+func _rotate_grabbed_object(target_rotation: Vector3, delta: float) -> void:
 	if grabbed_object != null:
-		grabbed_object.freeze = false # Aktifkan kembali gerakan fisika
-		grabbed_object = null
+		# Kecepatan rotasi
+		var rotation_speed = 25.0
+		
+		# Ambil rotasi saat ini dari objek yang dipegang
+		var current_rotation = grabbed_object.rotation_degrees
+		
+		# Lerp (linear interpolation) untuk rotasi smooth
+		current_rotation = current_rotation.lerp(target_rotation, rotation_speed * delta)
+		
+		# Set rotasi baru pada objek yang dipegang
+		grabbed_object.rotation_degrees = current_rotation
+

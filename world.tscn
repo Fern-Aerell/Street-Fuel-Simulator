@@ -8,6 +8,8 @@
 [ext_resource type="Material" uid="uid://b0pfn18wl1183" path="res://green.tres" id="5_1kq1o"]
 [ext_resource type="Material" uid="uid://sbw7gorjkp5g" path="res://blue.tres" id="6_knikc"]
 
+[sub_resource type="BoxMesh" id="BoxMesh_cgd4c"]
+
 [sub_resource type="PhysicalSkyMaterial" id="PhysicalSkyMaterial_7ghix"]
 ground_color = Color(1, 1, 1, 1)
 
@@ -20,22 +22,12 @@ sky = SubResource("Sky_r161k")
 sdfgi_enabled = true
 glow_enabled = true
 
-[sub_resource type="BoxMesh" id="BoxMesh_cgd4c"]
-
 [node name="World" type="Node3D"]
 
 [node name="plane" parent="." instance=ExtResource("1_5e45g")]
 
 [node name="Player" parent="." instance=ExtResource("2_pp88n")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.03096, 0)
-
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
-environment = SubResource("Environment_5crcd")
-
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.763438, 0.259478, -0.591467, 0.329206, 0.631542, 0.701981, 0.555685, -0.730634, 0.396722, 0, 8.33039, 0)
-light_energy = 3.0
-shadow_enabled = true
 
 [node name="TestItem" parent="." instance=ExtResource("3_1jixx")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12649, 1.92623, -5.18438)
@@ -72,3 +64,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 2, 0)
 material_override = ExtResource("6_knikc")
 mesh = SubResource("BoxMesh_cgd4c")
 skeleton = NodePath("../..")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_5crcd")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.763438, 0.259478, -0.591467, 0.329206, 0.631542, 0.701982, 0.555685, -0.730634, 0.396721, 0, 8.33039, 0)
+light_energy = 3.0
+shadow_enabled = true
